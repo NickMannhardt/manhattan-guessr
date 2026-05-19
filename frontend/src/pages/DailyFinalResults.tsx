@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Input, Spin } from 'antd';
+import { Button, Spin } from 'antd';
 import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip } from 'react-leaflet';
 import type { LatLngBoundsExpression } from 'leaflet';
 import type { RoundResult } from '../App';
@@ -46,11 +46,7 @@ function formatDistance(meters: number): string {
 }
 
 export function DailyFinalResults({ completedRounds, dailySessionId, onLeaderboard, onPlayPractice }: Props) {
-  const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) ?? '');
-  const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [nameLoading, setNameLoading] = useState(false);
-  const [nameSaved, setNameSaved] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const savedRef = useRef(false);
 
@@ -63,17 +59,8 @@ export function DailyFinalResults({ completedRounds, dailySessionId, onLeaderboa
     if (savedRef.current) return;
     savedRef.current = true;
 
-    // Check if already submitted today (e.g. page reload)
-    const raw = localStorage.getItem(todayKey());
-    if (raw) {
-      try {
-        const existing = JSON.parse(raw) as { submissionId: string; score: number };
-        setSubmissionId(existing.submissionId);
-        return;
-      } catch {
-        // proceed to submit
-      }
-    }
+    // Already submitted today (e.g. page reload) — nothing to do
+    if (localStorage.getItem(todayKey())) return;
 
     setSaving(true);
     const name = (localStorage.getItem(NAME_KEY) ?? '').trim() || 'Anonymous';
@@ -93,30 +80,11 @@ export function DailyFinalResults({ completedRounds, dailySessionId, onLeaderboa
         return r.json() as Promise<{ submissionId: string }>;
       })
       .then(({ submissionId: sid }) => {
-        setSubmissionId(sid);
         localStorage.setItem(todayKey(), JSON.stringify({ submissionId: sid, score: totalScore }));
       })
       .catch(() => setSubmitError(true))
       .finally(() => setSaving(false));
   }, [dailySessionId, totalScore, avgDistance, totalTime]);
-
-  const handleNameSave = async () => {
-    if (!submissionId) return;
-    const name = playerName.trim() || 'Anonymous';
-    setNameLoading(true);
-    setNameSaved(false);
-    try {
-      await fetch(`/api/daily/${submissionId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerName: name }),
-      });
-      localStorage.setItem(NAME_KEY, name);
-      setNameSaved(true);
-    } finally {
-      setNameLoading(false);
-    }
-  };
 
   const allLats = completedRounds.flatMap((r) => [r.guessLat, r.trueLat]);
   const allLngs = completedRounds.flatMap((r) => [r.guessLng, r.trueLng]);
@@ -212,47 +180,15 @@ export function DailyFinalResults({ completedRounds, dailySessionId, onLeaderboa
 
       {/* Bottom controls */}
       <div style={{ position: 'absolute', bottom: 24, left: 16, right: 16, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {saving ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 8 }}>
+        {saving && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
             <Spin size="small" />
+            Saving…
           </div>
-        ) : submitError ? (
+        )}
+        {submitError && (
           <div style={{ color: '#ff4d4f', fontSize: 13, textAlign: 'center' }}>
-            Score could not be saved. Your result was still recorded locally.
-          </div>
-        ) : (
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-              background: 'rgba(255,255,255,0.88)',
-              backdropFilter: 'blur(14px)',
-              WebkitBackdropFilter: 'blur(14px)',
-              borderRadius: 14,
-              padding: '8px 8px 8px 14px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-              alignItems: 'center',
-            }}
-          >
-            <Input
-              placeholder="Your name on leaderboard"
-              value={playerName}
-              onChange={(e) => { setPlayerName(e.target.value); setNameSaved(false); }}
-              onPressEnter={handleNameSave}
-              maxLength={50}
-              disabled={!submissionId}
-              bordered={false}
-              style={{ flex: 1, fontWeight: nameSaved ? 600 : 400, padding: 0 }}
-            />
-            <Button
-              type={nameSaved ? 'default' : 'primary'}
-              onClick={handleNameSave}
-              loading={nameLoading}
-              disabled={!submissionId || nameSaved}
-              style={{ borderRadius: 10, fontWeight: 600, flexShrink: 0 }}
-            >
-              {nameSaved ? '✓ Saved' : 'Update Name'}
-            </Button>
+            Score could not be saved.
           </div>
         )}
 
