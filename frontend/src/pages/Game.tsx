@@ -5,11 +5,11 @@ import type { GameResult, RoundResult } from '../App';
 import { TOTAL_ROUNDS } from '../App';
 
 interface Props {
-  gameId: string;
   address: string;
   startedAt: number;
   roundNumber: number;
   completedRounds: RoundResult[];
+  submitFn: (guessedLat: number, guessedLng: number, timeSeconds: number) => Promise<GameResult>;
   onResult: (result: GameResult, guessLat: number, guessLng: number, timeSeconds: number) => void;
 }
 
@@ -25,7 +25,7 @@ function CenterTracker({ onChange }: { onChange: (lat: number, lng: number) => v
   return null;
 }
 
-export function GamePage({ gameId, address, startedAt, roundNumber, completedRounds, onResult }: Props) {
+export function GamePage({ address, startedAt, roundNumber, completedRounds, submitFn, onResult }: Props) {
   const [center, setCenter] = useState<[number, number]>(MANHATTAN_CENTER);
   const [elapsed, setElapsed] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -42,13 +42,7 @@ export function GamePage({ gameId, address, startedAt, roundNumber, completedRou
     const timeSeconds = Math.floor((Date.now() - startedAt) / 1000);
     setSubmitting(true);
     try {
-      const res = await fetch('/api/game/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId, guessedLat: center[0], guessedLng: center[1], timeSeconds }),
-      });
-      if (!res.ok) throw new Error('Submit failed');
-      const result = await res.json() as GameResult;
+      const result = await submitFn(center[0], center[1], timeSeconds);
       onResult(result, center[0], center[1], timeSeconds);
     } catch {
       messageApi.error('Failed to submit. Please try again.');
