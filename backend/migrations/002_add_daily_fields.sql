@@ -1,0 +1,4 @@
+ALTER TABLE scores
+  ADD COLUMN is_daily BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN game_date DATE,
+  ADD COLUMN submission_id UUID UNIQUE;
