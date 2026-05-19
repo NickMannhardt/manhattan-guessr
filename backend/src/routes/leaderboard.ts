@@ -3,20 +3,24 @@ import pool from '../db/client';
 
 const router = Router();
 
+// GET /api/leaderboard — today's daily leaderboard
 router.get('/', async (_req, res, next) => {
   try {
+    const today = new Date().toISOString().slice(0, 10);
     const { rows } = await pool.query<{
       player_name: string;
-      address: string;
+      score: number;
       distance_meters: number;
       time_seconds: number;
-      score: number;
+      submission_id: string;
       created_at: string;
     }>(
-      `SELECT player_name, address, distance_meters, time_seconds, score, created_at
+      `SELECT player_name, score, distance_meters, time_seconds, submission_id, created_at
        FROM scores
+       WHERE is_daily = TRUE AND game_date = $1
        ORDER BY score DESC
-       LIMIT 10`
+       LIMIT 20`,
+      [today]
     );
     res.json(rows);
   } catch (err) {
@@ -24,6 +28,7 @@ router.get('/', async (_req, res, next) => {
   }
 });
 
+// POST /api/leaderboard — save practice score (not daily)
 router.post('/', async (req, res, next) => {
   try {
     const { playerName, address, distanceMeters, timeSeconds, score } = req.body as {
