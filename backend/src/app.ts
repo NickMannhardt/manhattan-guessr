@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import gameRouter from './routes/game';
 import leaderboardRouter from './routes/leaderboard';
+import dailyRouter from './routes/daily';
 
 const app = express();
 
@@ -10,6 +11,7 @@ app.use(express.json());
 
 app.use('/api/game', gameRouter);
 app.use('/api/leaderboard', leaderboardRouter);
+app.use('/api/daily', dailyRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
