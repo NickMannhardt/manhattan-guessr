@@ -48,7 +48,11 @@ export function LeaderboardPage({ onBack }: Props) {
   const [mySubmissionId, setMySubmissionId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editLoading, setEditLoading] = useState(false);
-  const [editSaved, setEditSaved] = useState(false);
+  // Start in "saved" state if a real name is already stored
+  const [editSaved, setEditSaved] = useState(() => {
+    const n = localStorage.getItem(NAME_KEY) ?? '';
+    return n.length > 0 && n !== 'Anonymous';
+  });
 
   useEffect(() => {
     const raw = localStorage.getItem(todayKey());
@@ -115,39 +119,52 @@ export function LeaderboardPage({ onBack }: Props) {
         <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 4 }}>{todayLabel}</div>
       </div>
 
-      {/* Name editor — only visible if you played today */}
+      {/* Name editor — prominent CTA when user played today */}
       {mySubmissionId && (
         <div
           style={{
-            display: 'flex',
-            gap: 8,
-            background: 'rgba(255,255,255,0.07)',
-            borderRadius: 12,
-            padding: '8px 8px 8px 14px',
-            margin: '12px 0',
-            alignItems: 'center',
+            background: editSaved ? 'rgba(255,255,255,0.05)' : 'rgba(22,119,255,0.18)',
+            border: editSaved ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(22,119,255,0.5)',
+            boxShadow: editSaved ? 'none' : '0 0 0 3px rgba(22,119,255,0.12)',
+            borderRadius: 14,
+            padding: '12px 14px',
+            margin: '10px 0 4px',
             flexShrink: 0,
+            transition: 'all 0.3s',
           }}
         >
-          <Input
-            placeholder="Your name"
-            value={editName}
-            onChange={(e) => { setEditName(e.target.value); setEditSaved(false); }}
-            onPressEnter={handleEditName}
-            maxLength={50}
-            bordered={false}
-            style={{ flex: 1, color: 'white', padding: 0, background: 'transparent' }}
-          />
-          <Button
-            type={editSaved ? 'default' : 'primary'}
-            size="small"
-            onClick={handleEditName}
-            loading={editLoading}
-            disabled={editSaved}
-            style={{ borderRadius: 8, fontWeight: 600, flexShrink: 0 }}
-          >
-            {editSaved ? '✓ Saved' : 'Update'}
-          </Button>
+          <div style={{ color: editSaved ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: 600, marginBottom: 8, letterSpacing: 0.3 }}>
+            {editSaved ? '✓ Your name is on the leaderboard' : '👆 Set your name on the leaderboard'}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Input
+              placeholder="Your name"
+              value={editName}
+              onChange={(e) => { setEditName(e.target.value); setEditSaved(false); }}
+              onPressEnter={handleEditName}
+              maxLength={50}
+              autoFocus={!editSaved}
+              style={{
+                flex: 1,
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 10,
+                color: 'white',
+                fontSize: 15,
+                fontWeight: 600,
+                height: 40,
+              }}
+            />
+            <Button
+              type="primary"
+              onClick={handleEditName}
+              loading={editLoading}
+              disabled={editSaved}
+              style={{ borderRadius: 10, fontWeight: 700, flexShrink: 0, height: 40 }}
+            >
+              {editSaved ? '✓' : 'Save'}
+            </Button>
+          </div>
         </div>
       )}
 
