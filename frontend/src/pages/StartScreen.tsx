@@ -13,25 +13,42 @@ interface DailyRecord {
   score: number;
 }
 
+interface LeaderboardRow {
+  submission_id: string;
+  score: number;
+}
+
 interface Props {
   onStartPractice: (gameId: string, address: string) => void;
   onStartDaily: (dailySessionId: string, addresses: string[]) => void;
+  onLeaderboard: () => void;
 }
 
-export function StartScreen({ onStartPractice, onStartDaily }: Props) {
+export function StartScreen({ onStartPractice, onStartDaily, onLeaderboard }: Props) {
   const [practiceLoading, setPracticeLoading] = useState(false);
   const [dailyLoading, setDailyLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [alreadyPlayed, setAlreadyPlayed] = useState<DailyRecord | null>(null);
+  const [myRank, setMyRank] = useState<{ rank: number; total: number } | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem(todayKey());
-    if (raw) {
-      try {
-        setAlreadyPlayed(JSON.parse(raw) as DailyRecord);
-      } catch {
-        // ignore corrupt entry
-      }
+    if (!raw) return;
+    try {
+      const record = JSON.parse(raw) as DailyRecord;
+      setAlreadyPlayed(record);
+      // Fetch leaderboard to find rank
+      fetch('/api/leaderboard')
+        .then((r) => r.json() as Promise<LeaderboardRow[]>)
+        .then((rows) => {
+          const idx = rows.findIndex((r) => r.submission_id === record.submissionId);
+          if (idx !== -1) {
+            setMyRank({ rank: idx + 1, total: rows.length });
+          }
+        })
+        .catch(() => {});
+    } catch {
+      // ignore corrupt entry
     }
   }, []);
 
@@ -59,7 +76,7 @@ export function StartScreen({ onStartPractice, onStartDaily }: Props) {
       const { dailySessionId, addresses } = await res.json() as { dailySessionId: string; addresses: string[] };
       onStartDaily(dailySessionId, addresses);
     } catch {
-      setError('Could not load today\'s challenge. Please try again.');
+      setError("Could not load today's challenge. Please try again.");
     } finally {
       setDailyLoading(false);
     }
@@ -104,7 +121,7 @@ export function StartScreen({ onStartPractice, onStartDaily }: Props) {
           background: alreadyPlayed
             ? 'rgba(255,255,255,0.06)'
             : 'linear-gradient(135deg, rgba(22,119,255,0.25) 0%, rgba(114,46,209,0.25) 100%)',
-          border: '1px solid rgba(255,255,255,0.15)',
+          border: alreadyPlayed ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(22,119,255,0.4)',
           borderRadius: 16,
           padding: '16px 18px',
         }}
@@ -120,30 +137,56 @@ export function StartScreen({ onStartPractice, onStartDaily }: Props) {
         </div>
 
         {alreadyPlayed ? (
-          <div>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 4 }}>
-              You played today
+          <>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
+              <div style={{ color: '#faad14', fontWeight: 900, fontSize: 36, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                {alreadyPlayed.score.toLocaleString()}
+                <span style={{ fontSize: 16, fontWeight: 400, color: 'rgba(255,255,255,0.4)', marginLeft: 4 }}>pts</span>
+              </div>
+              {myRank && (
+                <div
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    borderRadius: 8,
+                    padding: '3px 10px',
+                    color: 'rgba(255,255,255,0.7)',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  #{myRank.rank} of {myRank.total}
+                </div>
+              )}
             </div>
-            <div style={{ color: '#faad14', fontWeight: 900, fontSize: 28, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-              {alreadyPlayed.score.toLocaleString()} pts
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginBottom: 10 }}>
+              You've played today's challenge
             </div>
-          </div>
+            <Button
+              type="primary"
+              block
+              onClick={onLeaderboard}
+              style={{ height: 44, fontWeight: 700, borderRadius: 10, fontSize: 15 }}
+            >
+              View Leaderboard
+            </Button>
+          </>
         ) : (
-          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13 }}>
-            Everyone plays the same {TOTAL_ROUNDS} addresses today — scores go on the leaderboard.
-          </div>
+          <>
+            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginBottom: 12 }}>
+              Everyone plays the same {TOTAL_ROUNDS} addresses today — scores go on the leaderboard.
+            </div>
+            <Button
+              type="primary"
+              block
+              loading={dailyLoading}
+              onClick={handleStartDaily}
+              style={{ height: 44, fontWeight: 700, borderRadius: 10, fontSize: 15 }}
+            >
+              Play Daily Challenge
+            </Button>
+          </>
         )}
-
-        <Button
-          type="primary"
-          block
-          loading={dailyLoading}
-          onClick={handleStartDaily}
-          disabled={!!alreadyPlayed}
-          style={{ marginTop: 12, height: 44, fontWeight: 700, borderRadius: 10, fontSize: 15 }}
-        >
-          {alreadyPlayed ? 'Already Played Today' : 'Play Daily Challenge'}
-        </Button>
       </div>
 
       {/* How it works */}
