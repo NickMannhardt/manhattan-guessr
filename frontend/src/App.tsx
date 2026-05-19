@@ -83,7 +83,6 @@ async function submitPracticeRound(
 }
 
 async function submitDailyRound(
-  dailySessionId: string,
   roundIndex: number,
   guessedLat: number,
   guessedLng: number,
@@ -92,7 +91,7 @@ async function submitDailyRound(
   const res = await fetch('/api/daily/check', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ dailySessionId, roundIndex, guessedLat, guessedLng, timeSeconds }),
+    body: JSON.stringify({ roundIndex, guessedLat, guessedLng, timeSeconds }),
   });
   if (!res.ok) throw new Error('Submit failed');
   return res.json();
@@ -250,7 +249,7 @@ export default function App() {
         startedAt={phase.startedAt}
         roundNumber={roundIndex + 1}
         completedRounds={completedRounds}
-        submitFn={(lat, lng, t) => submitDailyRound(dailySessionId, roundIndex, lat, lng, t)}
+        submitFn={(lat, lng, t) => submitDailyRound(roundIndex, lat, lng, t)}
         onResult={(result, guessLat, guessLng, timeSeconds) =>
           handleDailyRoundResult(result, guessLat, guessLng, timeSeconds, completedRounds, roundIndex, dailySessionId, addresses)
         }

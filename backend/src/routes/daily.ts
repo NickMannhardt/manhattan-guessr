@@ -144,28 +144,24 @@ router.get('/start', async (_req, res, next) => {
   }
 });
 
-// POST /api/daily/check — reveal true location + score for one round
+// POST /api/daily/check — reveal true location + score for one round (stateless)
 router.post('/check', async (req, res, next) => {
   try {
-    const { dailySessionId, roundIndex, guessedLat, guessedLng, timeSeconds } = req.body as {
-      dailySessionId: string;
+    const { roundIndex, guessedLat, guessedLng, timeSeconds } = req.body as {
       roundIndex: number;
       guessedLat: number;
       guessedLng: number;
       timeSeconds: number;
     };
 
-    const session = dailySessions.get(dailySessionId);
-    if (!session) {
-      res.status(404).json({ error: 'Daily session not found or expired' });
-      return;
-    }
-
-    const round = session.rounds[roundIndex];
-    if (!round) {
+    if (roundIndex < 0 || roundIndex >= TOTAL_ROUNDS) {
       res.status(400).json({ error: 'Invalid round index' });
       return;
     }
+
+    // Recompute from today's seed — no in-memory session needed
+    const rounds = await getDailyRounds(todayStr());
+    const round = rounds[roundIndex];
 
     const distanceMeters = Math.round(haversineMeters(guessedLat, guessedLng, round.lat, round.lng));
     const distanceScore = 5000 * Math.exp(-distanceMeters / 400);
@@ -178,30 +174,24 @@ router.post('/check', async (req, res, next) => {
   }
 });
 
-// POST /api/daily/submit — save final score, return submissionId
+// POST /api/daily/submit — save final score, return submissionId (stateless)
 router.post('/submit', async (req, res, next) => {
   try {
-    const { dailySessionId, playerName, totalScore, avgDistanceMeters, totalTimeSeconds } = req.body as {
-      dailySessionId: string;
+    const { playerName, totalScore, avgDistanceMeters, totalTimeSeconds } = req.body as {
       playerName: string;
       totalScore: number;
       avgDistanceMeters: number;
       totalTimeSeconds: number;
     };
 
-    const session = dailySessions.get(dailySessionId);
-    if (!session) {
-      res.status(404).json({ error: 'Daily session not found or expired' });
-      return;
-    }
-
+    const date = todayStr();
     const submissionId = uuidv4();
     const name = playerName.trim() || 'Anonymous';
 
     await pool.query(
       `INSERT INTO scores (player_name, address, distance_meters, time_seconds, score, is_daily, game_date, submission_id)
        VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7)`,
-      [name, `Daily Challenge – ${session.date}`, avgDistanceMeters, totalTimeSeconds, totalScore, session.date, submissionId]
+      [name, `Daily Challenge – ${date}`, avgDistanceMeters, totalTimeSeconds, totalScore, date, submissionId]
     );
 
     res.json({ submissionId });

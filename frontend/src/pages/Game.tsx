@@ -91,6 +91,9 @@ export function GamePage({ address, startedAt, roundNumber, completedRounds, sub
           textAlign: 'center',
           width: 'max-content',
           maxWidth: 'calc(100vw - 32px)',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
         }}
       >
         <div style={{ color: 'rgba(0,0,0,0.4)', fontSize: 13, marginBottom: 6 }}>Where is</div>

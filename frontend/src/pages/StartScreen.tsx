@@ -87,22 +87,21 @@ export function StartScreen({ onStartPractice, onStartDaily, onLeaderboard }: Pr
   return (
     <div
       style={{
-        height: '100dvh',
+        minHeight: '100dvh',
         background: 'linear-gradient(160deg, #001529 0%, #003a70 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '32px 24px',
-        gap: 20,
-        overflowY: 'auto',
+        padding: '24px 20px',
+        gap: 16,
       }}
     >
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: 56, lineHeight: 1 }}>🗽</div>
+        <div style={{ fontSize: 44, lineHeight: 1 }}>🗽</div>
         <Typography.Title
           level={1}
-          style={{ color: 'white', margin: '12px 0 4px', fontSize: 36, fontWeight: 900 }}
+          style={{ color: 'white', margin: '8px 0 4px', fontSize: 30, fontWeight: 900 }}
         >
           Manhattan Guessr
         </Typography.Title>
