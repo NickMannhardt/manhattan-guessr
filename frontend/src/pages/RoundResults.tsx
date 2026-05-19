@@ -8,8 +8,7 @@ interface Props {
   roundNumber: number;
   latest: RoundResult;
   completedRounds: RoundResult[];
-  nextGame: { gameId: string; address: string } | null;
-  onNext: (nextGame: { gameId: string; address: string } | null) => void;
+  onNext: () => void;
 }
 
 function formatDistance(meters: number): string {
@@ -25,7 +24,7 @@ function scoreColor(score: number): string {
   return '#f5222d';
 }
 
-export function RoundResults({ roundNumber, latest, completedRounds, nextGame, onNext }: Props) {
+export function RoundResults({ roundNumber, latest, completedRounds, onNext }: Props) {
   const { score, distanceMeters, trueLat, trueLng, guessLat, guessLng, address, timeSeconds } = latest;
   const runningTotal = completedRounds.reduce((sum, r) => sum + r.score, 0);
   const isLast = roundNumber >= TOTAL_ROUNDS;
@@ -108,7 +107,7 @@ export function RoundResults({ roundNumber, latest, completedRounds, nextGame, o
           type="primary"
           size="large"
           block
-          onClick={() => onNext(nextGame)}
+          onClick={onNext}
           style={{ height: 52, fontSize: 18, fontWeight: 700, borderRadius: 14, boxShadow: '0 6px 20px rgba(22,119,255,0.45)' }}
         >
           {isLast ? 'See Final Results' : `Round ${roundNumber + 1} →`}
