@@ -196,7 +196,13 @@ export default function App() {
   // --- Render ---
 
   if (phase.name === 'start') {
-    return <StartScreen onStartPractice={startPracticeSeries} onStartDaily={startDailySeries} />;
+    return (
+      <StartScreen
+        onStartPractice={startPracticeSeries}
+        onStartDaily={startDailySeries}
+        onLeaderboard={() => setPhase({ name: 'leaderboard' })}
+      />
+    );
   }
 
   if (phase.name === 'round') {
