@@ -113,6 +113,33 @@ export function StartScreen({ onStartPractice, onStartDaily, onLeaderboard }: Pr
         </Typography.Text>
       </div>
 
+      {/* How it works */}
+      <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {[
+          { step: '1', text: `You get ${TOTAL_ROUNDS} real Manhattan addresses, one at a time` },
+          { step: '2', text: 'Drag the map to place your guess, then tap Lock In' },
+          { step: '3', text: 'See how close you were before the next round' },
+          { step: '4', text: 'After all 5, your total score is revealed on a single map' },
+        ].map(({ step, text }) => (
+          <div key={step} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{
+              width: 24, height: 24, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.12)',
+              color: 'white', fontWeight: 700, fontSize: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, marginTop: 1,
+            }}>
+              {step}
+            </div>
+            <Typography.Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, lineHeight: '1.4' }}>
+              {text}
+            </Typography.Text>
+          </div>
+        ))}
+      </div>
+
+      {error && <Alert type="error" message={error} showIcon style={{ width: '100%', maxWidth: 320 }} />}
+
       {/* Daily challenge card */}
       <div
         style={{
@@ -189,54 +216,6 @@ export function StartScreen({ onStartPractice, onStartDaily, onLeaderboard }: Pr
         )}
       </div>
 
-      {/* How it works */}
-      <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[
-          { step: '1', text: `You get ${TOTAL_ROUNDS} real Manhattan addresses, one at a time` },
-          { step: '2', text: 'Drag the map to place your guess, then tap Lock In' },
-          { step: '3', text: 'See how close you were before the next round' },
-          { step: '4', text: 'After all 5, your total score is revealed on a single map' },
-        ].map(({ step, text }) => (
-          <div key={step} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <div style={{
-              width: 24, height: 24, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.12)',
-              color: 'white', fontWeight: 700, fontSize: 12,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, marginTop: 1,
-            }}>
-              {step}
-            </div>
-            <Typography.Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, lineHeight: '1.4' }}>
-              {text}
-            </Typography.Text>
-          </div>
-        ))}
-      </div>
-
-      {/* Scoring */}
-      <div
-        style={{
-          background: 'rgba(255,255,255,0.08)',
-          borderRadius: 12,
-          padding: '14px 18px',
-          width: '100%',
-          maxWidth: 320,
-        }}
-      >
-        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
-          Per-round scoring (max 5,000)
-        </div>
-        <ScoringRow label="Spot on (0m, 0s)" value="5,000" color="#faad14" />
-        <ScoringRow label="2 blocks off, 20s" value="~3,200" color="#52c41a" />
-        <ScoringRow label="Half mile off, 60s" value="~50" color="#fa8c16" />
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 8 }}>
-          Precision matters — distance decays exponentially
-        </div>
-      </div>
-
-      {error && <Alert type="error" message={error} showIcon style={{ width: '100%', maxWidth: 320 }} />}
-
       <Button
         size="large"
         block
@@ -256,11 +235,3 @@ export function StartScreen({ onStartPractice, onStartDaily, onLeaderboard }: Pr
   );
 }
 
-function ScoringRow({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
-      <Typography.Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13 }}>{label}</Typography.Text>
-      <Typography.Text style={{ color, fontWeight: 700, fontFamily: 'monospace' }}>{value}</Typography.Text>
-    </div>
-  );
-}
