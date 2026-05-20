@@ -192,34 +192,28 @@ export function DailyFinalResults({ completedRounds, dailySessionId, onLeaderboa
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Button
-            size="large"
-            onClick={onLeaderboard}
-            style={{
-              flex: 1, height: 52, fontWeight: 600, borderRadius: 14,
-              background: 'rgba(255,255,255,0.88)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: 'none',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-            }}
-          >
-            Leaderboard
-          </Button>
-          <Button
-            size="large"
-            onClick={onPlayPractice}
-            style={{
-              flex: 2, height: 52, fontSize: 15, fontWeight: 600, borderRadius: 14,
-              background: 'rgba(255,255,255,0.15)',
-              border: '1px solid rgba(255,255,255,0.25)',
-              color: 'white',
-            }}
-          >
-            Practice Mode
-          </Button>
-        </div>
+        <Button
+          type="primary"
+          size="large"
+          block
+          onClick={onLeaderboard}
+          style={{ height: 56, fontSize: 17, fontWeight: 700, borderRadius: 14, boxShadow: '0 6px 20px rgba(22,119,255,0.45)' }}
+        >
+          View Leaderboard
+        </Button>
+        <Button
+          size="large"
+          block
+          onClick={onPlayPractice}
+          style={{
+            height: 48, fontSize: 15, fontWeight: 600, borderRadius: 14,
+            background: 'rgba(255,255,255,0.12)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            color: 'rgba(255,255,255,0.7)',
+          }}
+        >
+          Practice Mode
+        </Button>
       </div>
     </div>
   );
