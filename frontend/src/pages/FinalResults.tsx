@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Button, Input } from 'antd';
+import { Button } from 'antd';
 import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip } from 'react-leaflet';
 import type { LatLngBoundsExpression } from 'leaflet';
 import type { RoundResult } from '../App';
@@ -8,10 +7,7 @@ import { TOTAL_ROUNDS } from '../App';
 interface Props {
   completedRounds: RoundResult[];
   onPlayAgain: () => void;
-  onLeaderboard: () => void;
 }
-
-const NAME_KEY = 'manhattan_guessr_name';
 
 const ROUND_COLORS = ['#1677ff', '#52c41a', '#faad14', '#eb2f96', '#722ed1'];
 
@@ -39,11 +35,7 @@ function formatDistance(meters: number): string {
   return `${(feet / 5280).toFixed(2)} mi`;
 }
 
-export function FinalResults({ completedRounds, onPlayAgain, onLeaderboard }: Props) {
-  const [playerName, setPlayerName] = useState(() => localStorage.getItem(NAME_KEY) ?? '');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
+export function FinalResults({ completedRounds, onPlayAgain }: Props) {
   const totalScore = completedRounds.reduce((sum, r) => sum + r.score, 0);
   const totalTime = completedRounds.reduce((sum, r) => sum + r.timeSeconds, 0);
   const avgDistance = Math.round(completedRounds.reduce((sum, r) => sum + r.distanceMeters, 0) / completedRounds.length);
@@ -55,28 +47,6 @@ export function FinalResults({ completedRounds, onPlayAgain, onLeaderboard }: Pr
     [Math.min(...allLats) - PAD, Math.min(...allLngs) - PAD],
     [Math.max(...allLats) + PAD, Math.max(...allLngs) + PAD],
   ];
-
-  const handleSave = async () => {
-    setSaving(true);
-    const name = playerName.trim() || 'Anonymous';
-    try {
-      await fetch('/api/leaderboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerName: name,
-          address: `${TOTAL_ROUNDS}-round series`,
-          distanceMeters: avgDistance,
-          timeSeconds: totalTime,
-          score: totalScore,
-        }),
-      });
-      localStorage.setItem(NAME_KEY, name);
-      setSaved(true);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div style={{ height: '100dvh', position: 'relative', overflow: 'hidden' }}>
@@ -159,64 +129,16 @@ export function FinalResults({ completedRounds, onPlayAgain, onLeaderboard }: Pr
       </div>
 
       {/* Bottom controls */}
-      <div style={{ position: 'absolute', bottom: 24, left: 16, right: 16, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            background: 'rgba(255,255,255,0.88)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            borderRadius: 14,
-            padding: '8px 8px 8px 14px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-            alignItems: 'center',
-          }}
+      <div style={{ position: 'absolute', bottom: 24, left: 16, right: 16, zIndex: 1000 }}>
+        <Button
+          type="primary"
+          size="large"
+          block
+          onClick={onPlayAgain}
+          style={{ height: 56, fontSize: 17, fontWeight: 700, borderRadius: 14, boxShadow: '0 6px 20px rgba(22,119,255,0.45)' }}
         >
-          <Input
-            placeholder="Your name"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            onPressEnter={handleSave}
-            maxLength={50}
-            disabled={saved}
-            bordered={false}
-            style={{ flex: 1, fontWeight: saved ? 600 : 400, padding: 0 }}
-          />
-          <Button
-            type={saved ? 'default' : 'primary'}
-            onClick={handleSave}
-            loading={saving}
-            disabled={saved}
-            style={{ borderRadius: 10, fontWeight: 600, flexShrink: 0 }}
-          >
-            {saved ? '✓ Saved' : 'Save score'}
-          </Button>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Button
-            size="large"
-            onClick={onLeaderboard}
-            style={{
-              flex: 1, height: 52, fontWeight: 600, borderRadius: 14,
-              background: 'rgba(255,255,255,0.88)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: 'none',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-            }}
-          >
-            Leaderboard
-          </Button>
-          <Button
-            type="primary"
-            size="large"
-            onClick={onPlayAgain}
-            style={{ flex: 2, height: 52, fontSize: 16, fontWeight: 700, borderRadius: 14, boxShadow: '0 6px 20px rgba(22,119,255,0.45)' }}
-          >
-            Play Again
-          </Button>
-        </div>
+          Play Again
+        </Button>
       </div>
     </div>
   );

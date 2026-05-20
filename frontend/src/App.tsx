@@ -236,7 +236,6 @@ export default function App() {
       <FinalResults
         completedRounds={phase.completedRounds}
         onPlayAgain={handlePlayAgain}
-        onLeaderboard={() => setPhase({ name: 'leaderboard' })}
       />
     );
   }
