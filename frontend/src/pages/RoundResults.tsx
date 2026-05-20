@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { MapContainer, TileLayer, CircleMarker, Polyline, Tooltip } from 'react-leaflet';
 import type { LatLngBoundsExpression } from 'leaflet';
@@ -9,6 +10,12 @@ interface Props {
   latest: RoundResult;
   completedRounds: RoundResult[];
   onNext: () => void;
+  dailyRoundIndex?: number;
+}
+
+interface CommunityGuess {
+  guessedLat: number;
+  guessedLng: number;
 }
 
 function formatDistance(meters: number): string {
@@ -24,10 +31,20 @@ function scoreColor(score: number): string {
   return '#f5222d';
 }
 
-export function RoundResults({ roundNumber, latest, completedRounds, onNext }: Props) {
+export function RoundResults({ roundNumber, latest, completedRounds, onNext, dailyRoundIndex }: Props) {
   const { score, distanceMeters, trueLat, trueLng, guessLat, guessLng, address, timeSeconds } = latest;
   const runningTotal = completedRounds.reduce((sum, r) => sum + r.score, 0);
   const isLast = roundNumber >= TOTAL_ROUNDS;
+
+  const [communityGuesses, setCommunityGuesses] = useState<CommunityGuess[]>([]);
+
+  useEffect(() => {
+    if (dailyRoundIndex === undefined) return;
+    fetch(`/api/daily/guesses/${dailyRoundIndex}`)
+      .then((r) => r.json() as Promise<CommunityGuess[]>)
+      .then(setCommunityGuesses)
+      .catch(() => {});
+  }, [dailyRoundIndex]);
 
   const PAD = 0.004;
   const bounds: LatLngBoundsExpression = [
@@ -43,6 +60,14 @@ export function RoundResults({ roundNumber, latest, completedRounds, onNext }: P
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
           subdomains={['a', 'b', 'c', 'd']}
         />
+        {communityGuesses.map((g, i) => (
+          <CircleMarker
+            key={i}
+            center={[g.guessedLat, g.guessedLng]}
+            radius={6}
+            pathOptions={{ color: 'rgba(100,100,100,0.4)', fillColor: 'rgba(150,150,150,0.25)', fillOpacity: 1, weight: 1 }}
+          />
+        ))}
         <CircleMarker
           center={[guessLat, guessLng]}
           radius={10}
@@ -92,6 +117,9 @@ export function RoundResults({ roundNumber, latest, completedRounds, onNext }: P
         <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
           <Stat label="Distance" value={formatDistance(distanceMeters)} />
           <Stat label="Time" value={`${timeSeconds}s`} />
+          {dailyRoundIndex !== undefined && communityGuesses.length > 0 && (
+            <Stat label="Others guessed" value={`${communityGuesses.length}`} />
+          )}
         </div>
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Running total</span>
