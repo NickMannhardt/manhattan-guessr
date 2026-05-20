@@ -8,6 +8,7 @@ import { TOTAL_ROUNDS } from '../App';
 interface Props {
   completedRounds: RoundResult[];
   dailySessionId: string;
+  submissionId: string;
   onLeaderboard: () => void;
   onPlayPractice: () => void;
 }
@@ -45,7 +46,7 @@ function formatDistance(meters: number): string {
   return `${(feet / 5280).toFixed(2)} mi`;
 }
 
-export function DailyFinalResults({ completedRounds, dailySessionId, onLeaderboard, onPlayPractice }: Props) {
+export function DailyFinalResults({ completedRounds, dailySessionId: _dailySessionId, submissionId, onLeaderboard, onPlayPractice }: Props) {
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const savedRef = useRef(false);
@@ -68,7 +69,7 @@ export function DailyFinalResults({ completedRounds, dailySessionId, onLeaderboa
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        dailySessionId,
+        submissionId,
         playerName: name,
         totalScore,
         avgDistanceMeters: avgDistance,
@@ -77,14 +78,14 @@ export function DailyFinalResults({ completedRounds, dailySessionId, onLeaderboa
     })
       .then((r) => {
         if (!r.ok) throw new Error('Submit failed');
-        return r.json() as Promise<{ submissionId: string }>;
+        return r.json();
       })
-      .then(({ submissionId: sid }) => {
-        localStorage.setItem(todayKey(), JSON.stringify({ submissionId: sid, score: totalScore }));
+      .then(() => {
+        localStorage.setItem(todayKey(), JSON.stringify({ submissionId, score: totalScore }));
       })
       .catch(() => setSubmitError(true))
       .finally(() => setSaving(false));
-  }, [dailySessionId, totalScore, avgDistance, totalTime]);
+  }, [submissionId, totalScore, avgDistance, totalTime]);
 
   const allLats = completedRounds.flatMap((r) => [r.guessLat, r.trueLat]);
   const allLngs = completedRounds.flatMap((r) => [r.guessLng, r.trueLng]);
