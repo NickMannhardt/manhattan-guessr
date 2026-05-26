@@ -45,6 +45,7 @@ type Phase =
   | {
       name: 'daily-round';
       dailySessionId: string;
+      submissionId: string;
       roundIndex: number;
       addresses: string[];
       startedAt: number;
@@ -56,9 +57,10 @@ type Phase =
       latest: RoundResult;
       completedRounds: RoundResult[];
       dailySessionId: string;
+      submissionId: string;
       addresses: string[];
     }
-  | { name: 'daily-final'; completedRounds: RoundResult[]; dailySessionId: string }
+  | { name: 'daily-final'; completedRounds: RoundResult[]; dailySessionId: string; submissionId: string }
   | { name: 'leaderboard' };
 
 async function fetchPracticeGame(): Promise<{ gameId: string; address: string }> {
@@ -87,11 +89,12 @@ async function submitDailyRound(
   guessedLat: number,
   guessedLng: number,
   timeSeconds: number,
+  submissionId: string,
 ): Promise<GameResult> {
   const res = await fetch('/api/daily/check', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ roundIndex, guessedLat, guessedLng, timeSeconds }),
+    body: JSON.stringify({ roundIndex, guessedLat, guessedLng, timeSeconds, submissionId }),
   });
   if (!res.ok) throw new Error('Submit failed');
   return res.json();
@@ -156,8 +159,8 @@ export default function App() {
 
   // --- Daily mode ---
 
-  const startDailySeries = (dailySessionId: string, addresses: string[]) => {
-    setPhase({ name: 'daily-round', dailySessionId, roundIndex: 0, addresses, startedAt: Date.now(), completedRounds: [] });
+  const startDailySeries = (dailySessionId: string, addresses: string[], submissionId: string) => {
+    setPhase({ name: 'daily-round', dailySessionId, submissionId, roundIndex: 0, addresses, startedAt: Date.now(), completedRounds: [] });
   };
 
   const handleDailyRoundResult = (
@@ -168,23 +171,25 @@ export default function App() {
     completedRounds: RoundResult[],
     roundIndex: number,
     dailySessionId: string,
+    submissionId: string,
     addresses: string[],
   ) => {
     const latest: RoundResult = { ...result, guessLat, guessLng, timeSeconds };
     const allRounds = [...completedRounds, latest];
 
     if (roundIndex >= TOTAL_ROUNDS - 1) {
-      setPhase({ name: 'daily-final', completedRounds: allRounds, dailySessionId });
+      setPhase({ name: 'daily-final', completedRounds: allRounds, dailySessionId, submissionId });
       return;
     }
 
-    setPhase({ name: 'daily-between', roundIndex, latest, completedRounds: allRounds, dailySessionId, addresses });
+    setPhase({ name: 'daily-between', roundIndex, latest, completedRounds: allRounds, dailySessionId, submissionId, addresses });
   };
 
-  const handleDailyNext = (roundIndex: number, completedRounds: RoundResult[], dailySessionId: string, addresses: string[]) => {
+  const handleDailyNext = (roundIndex: number, completedRounds: RoundResult[], dailySessionId: string, submissionId: string, addresses: string[]) => {
     setPhase({
       name: 'daily-round',
       dailySessionId,
+      submissionId,
       roundIndex: roundIndex + 1,
       addresses,
       startedAt: Date.now(),
@@ -236,35 +241,35 @@ export default function App() {
       <FinalResults
         completedRounds={phase.completedRounds}
         onPlayAgain={handlePlayAgain}
-        onLeaderboard={() => setPhase({ name: 'leaderboard' })}
       />
     );
   }
 
   if (phase.name === 'daily-round') {
-    const { dailySessionId, roundIndex, addresses, completedRounds } = phase;
+    const { dailySessionId, submissionId, roundIndex, addresses, completedRounds } = phase;
     return (
       <GamePage
         address={addresses[roundIndex]}
         startedAt={phase.startedAt}
         roundNumber={roundIndex + 1}
         completedRounds={completedRounds}
-        submitFn={(lat, lng, t) => submitDailyRound(roundIndex, lat, lng, t)}
+        submitFn={(lat, lng, t) => submitDailyRound(roundIndex, lat, lng, t, submissionId)}
         onResult={(result, guessLat, guessLng, timeSeconds) =>
-          handleDailyRoundResult(result, guessLat, guessLng, timeSeconds, completedRounds, roundIndex, dailySessionId, addresses)
+          handleDailyRoundResult(result, guessLat, guessLng, timeSeconds, completedRounds, roundIndex, dailySessionId, submissionId, addresses)
         }
       />
     );
   }
 
   if (phase.name === 'daily-between') {
-    const { roundIndex, completedRounds, dailySessionId, addresses } = phase;
+    const { roundIndex, completedRounds, dailySessionId, submissionId, addresses } = phase;
     return (
       <RoundResults
         roundNumber={roundIndex + 1}
         latest={phase.latest}
         completedRounds={completedRounds}
-        onNext={() => handleDailyNext(roundIndex, completedRounds, dailySessionId, addresses)}
+        dailyRoundIndex={roundIndex}
+        onNext={() => handleDailyNext(roundIndex, completedRounds, dailySessionId, submissionId, addresses)}
       />
     );
   }
@@ -274,6 +279,7 @@ export default function App() {
       <DailyFinalResults
         completedRounds={phase.completedRounds}
         dailySessionId={phase.dailySessionId}
+        submissionId={phase.submissionId}
         onLeaderboard={() => setPhase({ name: 'leaderboard' })}
         onPlayPractice={handlePlayAgain}
       />

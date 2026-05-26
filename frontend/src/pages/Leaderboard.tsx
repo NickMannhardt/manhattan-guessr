@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Input, Typography, Spin, Alert } from 'antd';
+import { PlayerMapView } from './PlayerMapView';
 
 interface ScoreRow {
   player_name: string;
@@ -48,11 +49,11 @@ export function LeaderboardPage({ onBack }: Props) {
   const [mySubmissionId, setMySubmissionId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editLoading, setEditLoading] = useState(false);
-  // Start in "saved" state if a real name is already stored
   const [editSaved, setEditSaved] = useState(() => {
     const n = localStorage.getItem(NAME_KEY) ?? '';
     return n.length > 0 && n !== 'Anonymous';
   });
+  const [selectedRow, setSelectedRow] = useState<ScoreRow | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem(todayKey());
@@ -91,13 +92,23 @@ export function LeaderboardPage({ onBack }: Props) {
       });
       localStorage.setItem(NAME_KEY, name);
       setEditSaved(true);
-      // Refresh leaderboard
       const r = await fetch('/api/leaderboard');
       if (r.ok) setRows(await r.json());
     } finally {
       setEditLoading(false);
     }
   };
+
+  if (selectedRow) {
+    return (
+      <PlayerMapView
+        submissionId={selectedRow.submission_id}
+        playerName={selectedRow.player_name}
+        totalScore={selectedRow.score}
+        onBack={() => setSelectedRow(null)}
+      />
+    );
+  }
 
   const todayLabel = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -119,7 +130,7 @@ export function LeaderboardPage({ onBack }: Props) {
         <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 4 }}>{todayLabel}</div>
       </div>
 
-      {/* Name editor — prominent CTA when user played today */}
+      {/* Name editor */}
       {mySubmissionId && (
         <div
           style={{
@@ -185,6 +196,7 @@ export function LeaderboardPage({ onBack }: Props) {
           return (
             <div
               key={row.submission_id || i}
+              onClick={() => setSelectedRow(row)}
               style={{
                 background: isMe ? 'rgba(22,119,255,0.18)' : 'rgba(255,255,255,0.07)',
                 border: isMe ? '1px solid rgba(22,119,255,0.4)' : '1px solid transparent',
@@ -194,6 +206,7 @@ export function LeaderboardPage({ onBack }: Props) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
+                cursor: 'pointer',
               }}
             >
               <div style={{ fontSize: 22, width: 32, textAlign: 'center', flexShrink: 0 }}>
@@ -204,7 +217,7 @@ export function LeaderboardPage({ onBack }: Props) {
                   {row.player_name}{isMe && <span style={{ color: 'rgba(22,119,255,0.8)', fontSize: 12, fontWeight: 400, marginLeft: 6 }}>you</span>}
                 </div>
                 <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 2 }}>
-                  {formatDistance(row.distance_meters)} avg · {row.time_seconds}s
+                  {formatDistance(row.distance_meters)} avg · {row.time_seconds}s · tap to view map
                 </div>
               </div>
               <div

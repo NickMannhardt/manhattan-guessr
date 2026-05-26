@@ -4,6 +4,7 @@
       "src": "/api/(.*)",
       "dest": "https://4u9kkvmc73.execute-api.us-east-1.amazonaws.com/api/$1"
     },
+    { "handle": "filesystem" },
     {
       "src": "/(.*)",
       "dest": "/index.html"

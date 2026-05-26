@@ -106,7 +106,6 @@ async function fetchAddressAtOffset(offset: number): Promise<DailyRound | null> 
   return null;
 }
 
-// Cache today's rounds in memory so repeated /start calls are instant
 let cachedDate: string | null = null;
 let cachedRounds: DailyRound[] | null = null;
 
@@ -131,6 +130,7 @@ router.get('/start', async (_req, res, next) => {
     const date = todayStr();
     const rounds = await getDailyRounds(date);
     const dailySessionId = uuidv4();
+    const submissionId = uuidv4();
     dailySessions.set(dailySessionId, { date, rounds });
 
     if (dailySessions.size > 2000) {
@@ -138,20 +138,21 @@ router.get('/start', async (_req, res, next) => {
       if (oldest) dailySessions.delete(oldest);
     }
 
-    res.json({ dailySessionId, date, addresses: rounds.map((r) => r.address) });
+    res.json({ dailySessionId, submissionId, date, addresses: rounds.map((r) => r.address) });
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/daily/check — reveal true location + score for one round (stateless)
+// POST /api/daily/check — reveal true location + score; save guess if submissionId provided
 router.post('/check', async (req, res, next) => {
   try {
-    const { roundIndex, guessedLat, guessedLng, timeSeconds } = req.body as {
+    const { roundIndex, guessedLat, guessedLng, timeSeconds, submissionId } = req.body as {
       roundIndex: number;
       guessedLat: number;
       guessedLng: number;
       timeSeconds: number;
+      submissionId?: string;
     };
 
     if (roundIndex < 0 || roundIndex >= TOTAL_ROUNDS) {
@@ -159,7 +160,6 @@ router.post('/check', async (req, res, next) => {
       return;
     }
 
-    // Recompute from today's seed — no in-memory session needed
     const rounds = await getDailyRounds(todayStr());
     const round = rounds[roundIndex];
 
@@ -168,16 +168,27 @@ router.post('/check', async (req, res, next) => {
     const timeMultiplier = Math.max(0.2, 1 - timeSeconds / 120);
     const score = Math.round(distanceScore * timeMultiplier);
 
+    if (submissionId) {
+      const date = todayStr();
+      pool.query(
+        `INSERT INTO daily_round_guesses (submission_id, game_date, round_index, guessed_lat, guessed_lng, score, distance_meters)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT DO NOTHING`,
+        [submissionId, date, roundIndex, guessedLat, guessedLng, score, distanceMeters]
+      ).catch(() => {});
+    }
+
     res.json({ score, distanceMeters, trueLat: round.lat, trueLng: round.lng, address: round.address });
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/daily/submit — save final score, return submissionId (stateless)
+// POST /api/daily/submit — save final score using client-provided submissionId
 router.post('/submit', async (req, res, next) => {
   try {
-    const { playerName, totalScore, avgDistanceMeters, totalTimeSeconds } = req.body as {
+    const { submissionId, playerName, totalScore, avgDistanceMeters, totalTimeSeconds } = req.body as {
+      submissionId: string;
       playerName: string;
       totalScore: number;
       avgDistanceMeters: number;
@@ -185,12 +196,12 @@ router.post('/submit', async (req, res, next) => {
     };
 
     const date = todayStr();
-    const submissionId = uuidv4();
     const name = playerName.trim() || 'Anonymous';
 
     await pool.query(
       `INSERT INTO scores (player_name, address, distance_meters, time_seconds, score, is_daily, game_date, submission_id)
-       VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7)`,
+       VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7)
+       ON CONFLICT (submission_id) DO NOTHING`,
       [name, `Daily Challenge – ${date}`, avgDistanceMeters, totalTimeSeconds, totalScore, date, submissionId]
     );
 
@@ -218,6 +229,77 @@ router.patch('/:submissionId', async (req, res, next) => {
     }
 
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/daily/guesses/:roundIndex — all players' guesses for today's round
+router.get('/guesses/:roundIndex', async (req, res, next) => {
+  try {
+    const roundIndex = parseInt(req.params.roundIndex, 10);
+    if (isNaN(roundIndex) || roundIndex < 0 || roundIndex >= TOTAL_ROUNDS) {
+      res.status(400).json({ error: 'Invalid round index' });
+      return;
+    }
+
+    const date = todayStr();
+    const result = await pool.query<{ guessed_lat: string; guessed_lng: string }>(
+      `SELECT guessed_lat, guessed_lng FROM daily_round_guesses WHERE game_date = $1 AND round_index = $2`,
+      [date, roundIndex]
+    );
+
+    res.json(result.rows.map((r) => ({
+      guessedLat: parseFloat(r.guessed_lat),
+      guessedLng: parseFloat(r.guessed_lng),
+    })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/daily/player/:submissionId — a player's full round breakdown for the leaderboard map
+router.get('/player/:submissionId', async (req, res, next) => {
+  try {
+    const { submissionId } = req.params;
+
+    const result = await pool.query<{
+      round_index: number;
+      guessed_lat: string;
+      guessed_lng: string;
+      score: number;
+      distance_meters: string;
+      game_date: string;
+    }>(
+      `SELECT round_index, guessed_lat, guessed_lng, score, distance_meters, game_date
+       FROM daily_round_guesses WHERE submission_id = $1 ORDER BY round_index`,
+      [submissionId]
+    );
+
+    if (!result.rows.length) {
+      res.status(404).json({ error: 'No guesses found' });
+      return;
+    }
+
+    const dateStr = String(result.rows[0].game_date).slice(0, 10);
+
+    const rounds = await getDailyRounds(dateStr);
+
+    const data = result.rows.map((r) => {
+      const round = rounds[r.round_index];
+      return {
+        roundIndex: r.round_index,
+        guessedLat: parseFloat(r.guessed_lat),
+        guessedLng: parseFloat(r.guessed_lng),
+        trueLat: round?.lat ?? 0,
+        trueLng: round?.lng ?? 0,
+        address: round?.address ?? '',
+        score: r.score,
+        distanceMeters: parseFloat(r.distance_meters),
+      };
+    });
+
+    res.json(data);
   } catch (err) {
     next(err);
   }

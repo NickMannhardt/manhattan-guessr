@@ -20,7 +20,7 @@ interface LeaderboardRow {
 
 interface Props {
   onStartPractice: (gameId: string, address: string) => void;
-  onStartDaily: (dailySessionId: string, addresses: string[]) => void;
+  onStartDaily: (dailySessionId: string, addresses: string[], submissionId: string) => void;
   onLeaderboard: () => void;
 }
 
@@ -73,8 +73,8 @@ export function StartScreen({ onStartPractice, onStartDaily, onLeaderboard }: Pr
     try {
       const res = await fetch('/api/daily/start');
       if (!res.ok) throw new Error('Failed to load daily challenge');
-      const { dailySessionId, addresses } = await res.json() as { dailySessionId: string; addresses: string[] };
-      onStartDaily(dailySessionId, addresses);
+      const { dailySessionId, addresses, submissionId } = await res.json() as { dailySessionId: string; addresses: string[]; submissionId: string };
+      onStartDaily(dailySessionId, addresses, submissionId);
     } catch {
       setError("Could not load today's challenge. Please try again.");
     } finally {
